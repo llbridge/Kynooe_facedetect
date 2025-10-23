@@ -1,2 +1,2 @@
 # Kynooe_facedetect
-Open source library for kynooe_robot face detection
+人脸检测适用于Kynoee产品
