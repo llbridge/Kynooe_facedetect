@@ -6,7 +6,7 @@ import time
 
 import cv2
 
-from config import FONT, FPS_PRINT_INTERVAL, STREAM_URL, YUNET_ONNX
+from config import FONT, STREAM_URL, YUNET_ONNX
 from src.ble.transport import (
     ADAPTER_NAME,
     BLETransport,
@@ -18,9 +18,6 @@ from src.utils.env import parse_timeout_env
 from src.vision.capture import CaptureWorker
 from src.vision.facedetector import FaceDetectorTracker, assert_model_ok
 
-
-FACE_FIXED_X = -8.61
-FACE_FIXED_Y = 10.13
 BLE_CONNECT_TIMEOUT_ENV = "MECHARM_BLE_CONNECT_TIMEOUT"
 WINDOW_TITLE = "yunet face control"
 FPS_LABEL_POS = (10, 30)
@@ -45,28 +42,23 @@ def wait_for_first_frame(frame_queue: queue.Queue, *, timeout: float = 2.0) -> N
             print("waiting for stream...")
 
 
-def build_payload(x_val: float, y_val: float, z_val: float) -> dict:
+def build_payload(x_val: float, y_val: float, z_val: float, gripper: int, delay: int) -> dict:
     """Construct BLE joystick payload."""
     return {
         "mode": "rectJoystick",
         "x": float(x_val),
         "y": float(y_val),
         "z": float(z_val),
-        "gripper": 1,
-        "delay": 20,
+        "gripper": int(gripper),
+        "delay": int(delay),
     }
 
-
-def update_fps(counter: int, prev_ts: float, interval: int) -> tuple[int, float, float]:
-    """Update FPS counters and return (counter, prev_ts, fps)."""
-    counter += 1
-    if counter < interval:
-        return counter, prev_ts, 0.0
-
+def update_fps(prev_ts: float) -> tuple[float, float]:
+    """Compute instantaneous FPS."""
     now = time.time()
     elapsed = max(1e-6, now - prev_ts)
-    fps = counter / elapsed
-    return 0, now, fps
+    fps = 1.0 / elapsed
+    return now, fps
 
 
 def main() -> None:
@@ -86,7 +78,6 @@ def main() -> None:
 
     prev_time = time.time()
     fps = 0.0
-    frame_counter = 0
 
     try:
         print("waiting for bluetooth connection...")
@@ -98,7 +89,7 @@ def main() -> None:
             print("bluetooth not connected within timeout; exiting.")
             return
 
-        face_z = 110
+        face_z = face_ctrl.default_z
 
         while True:
             try:
@@ -106,18 +97,18 @@ def main() -> None:
             except queue.Empty:
                 continue
 
-            x_val, y_val, z_val, face_center = face_ctrl.step(frame)
-            face_z = face_z + z_val
+            x_val, y_val, z_step, face_center = face_ctrl.step(frame)
+            face_z = max(face_ctrl.z_min, min(face_ctrl.z_max, face_z + z_step))
 
             if ble_transport.connected():
-                payload = build_payload(x_val, y_val, face_z)
+                payload = build_payload(x_val, y_val, face_z, gripper=1, delay=20)
                 if face_center:
-                    print(f"[SEND] x={FACE_FIXED_X:.2f}, y={FACE_FIXED_Y:.2f}, z={z_val:.2f}")
+                    print(f"[SEND] x={x_val:.2f}, y={y_val:.2f}, z={face_z:.2f}, gripper=1, delay=20 (face at {face_center})")
                 else:
-                    print(f"[SEND] x={FACE_FIXED_X:.2f}, y={FACE_FIXED_Y:.2f}, z={z_val:.2f} (no face)")
+                    print(f"[SEND] x={x_val:.2f}, y={y_val:.2f}, z={face_z:.2f}, gripper=1, delay=20 (no face)")
                 ble_transport.send_json(payload)
 
-            frame_counter, prev_time, fps = update_fps(frame_counter, prev_time, FPS_PRINT_INTERVAL)
+            prev_time, fps = update_fps(prev_time)
 
             cv2.putText(frame, f"fps: {fps:.2f}", FPS_LABEL_POS, face_ctrl.font, 0.8, (255, 255, 0), 2, cv2.LINE_AA)
             cv2.imshow(WINDOW_TITLE, frame)

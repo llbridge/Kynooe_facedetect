@@ -47,6 +47,23 @@ FACE_CTRL = {
     "default_z": 110.0,
     "z_min": 0.0,
     "z_max": 180.0,
+    "tolerance_px": 30.0,
+    "min_step": 2,
+    "max_step": 5.0,
+    "z_gain": 8.0,
+}
+
+# ======================================
+# === Hand control parameters ===
+# ======================================
+HAND_CTRL = {
+    "default_z": 110.0,
+    "z_min": 0.0,
+    "z_max": 180.0,
+    "tolerance_px": 40.0,
+    "min_step": 0.4,
+    "max_step": 5.0,
+    "z_gain": 0.1,
 }
 
 # ======================================
@@ -54,7 +71,7 @@ FACE_CTRL = {
 # ======================================
 MP_HANDS_CONFIG = {
     "static_image_mode": False,
-    "max_num_hands": 2,
+    "max_num_hands": 1,
     "min_detection_confidence": 0.6,
     "min_tracking_confidence": 0.5,
 }
@@ -68,12 +85,10 @@ ROLE_UUID = "6d68efe5-04b6-4a85-abc4-c2670b7bf7fd"
 JOYSTICK_UUID = "abcd8888-1a2b-3c4d-5e6f-abcdef888888"
 
 DEFAULT_SLAVE_ASSIGNMENTS = [
-    "6055F97CB57C=M1-R",
+    "50787DF4D8B0=M1-R",
     "50787DF4D808=M2-P",
-    # "7CDFA1B20C48=M3-P",
-    "50787DF4D85C=M3-P",
-    # "6055F97CB4CC=M4-P",
-    "34CDB04C3278=M4-P",
+    "50787DF4CFBC=M3-P",
+    "50787DF4D85C=M4-P",
     "50787DF4D7EC=M5-G",
 ]
 

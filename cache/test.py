@@ -64,10 +64,6 @@ class FaceController:
         self.default_z = float(self.ctrl_cfg["default_z"])
         self.z_min = float(self.ctrl_cfg["z_min"])
         self.z_max = float(self.ctrl_cfg["z_max"])
-        self.tolerance_px = float(self.ctrl_cfg.get("tolerance_px", 30.0))
-        self.min_step = float(self.ctrl_cfg.get("min_step", 0.5))
-        self.max_step = float(self.ctrl_cfg.get("max_step", 5.0))
-        self.z_gain = float(self.ctrl_cfg.get("z_gain", 8.0))
 
         self._last_z: float = self.default_z
         self.points = [[-4.35, 12.65], [-8.61, 10.13]]
@@ -77,13 +73,12 @@ class FaceController:
         frame,
         *,
         annotate: bool = True,
-    ) -> Tuple[float, float, float, Optional[Tuple[int, int]]]:
+    ) -> Tuple[float, Optional[Tuple[int, int]]]:
         """
         Run one control step.
 
         Returns:
-            x_val, y_val: Follow control targets based on face proximity.
-            z_step: Incremental z adjustment derived from face offset.
+            z_val: Roll command for the gripper.
             face_center: Optional face center (x, y) in pixels.
         """
         boxes, _, _ = self.tracker.step(frame)
@@ -110,25 +105,19 @@ class FaceController:
             print("Face at normal distance, setting z to adjusted value.")
             x_val = self.points[1][0]
             y_val = self.points[1][1]
+        
         frame_width = frame.shape[1]
-        center_x = frame_width / 2.0
-        z_val = 0.0
-        if face_center and center_x > 0:
-            z_diff = face_center[0] - center_x
-            print("Z difference:", z_diff)
-            if abs(z_diff) <= self.tolerance_px:
-                print("Face is centered.")
-                z_val = 0.0
-            else:
-                normalized = np.clip(z_diff / center_x, -1.0, 1.0)
-                scaled_step = normalized * self.z_gain
-                z_val = float(np.clip(scaled_step, -self.max_step, self.max_step))
-                if abs(z_val) < self.min_step:
-                    z_val = self.min_step if z_diff > 0 else -self.min_step
-                direction = "right" if z_diff > 0 else "left"
-                print(f"Face is to the {direction} of center, z step {z_val:.2f}.")
-        else:
-            print("Z difference: 0")
-            z_val = 0.0
 
+        z_diff = face_center[0] - (frame_width / 2) if face_center else 0
+        print("Z difference:", z_diff)
+        tolerance = 30  # pixels
+        if abs(z_diff) <= tolerance:
+            print("Face is centered.")
+            z_val = 0
+        elif z_diff > 0:
+            print("Face is to the right of center.")
+            z_val = 1
+        else:
+            print("Face is to the left of center.")
+            z_val = -1
         return x_val, y_val, z_val, face_center

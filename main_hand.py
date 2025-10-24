@@ -58,6 +58,8 @@ def main() -> None:
             print("bluetooth not connected within timeout; exiting.")
             return
 
+        z_val = hand_ctrl.default_z
+
         while True:
             try:
                 frame = q.get(timeout=2.0)
@@ -66,21 +68,30 @@ def main() -> None:
 
             frame = cv2.flip(frame, 1)
 
-            x_val, y_val, hand_point = hand_ctrl.step(frame)
+            x_val, y_val, z_step, hand_point = hand_ctrl.step(frame)
+            if z_step != 0.0:
+                z_val += z_step
+            else:
+                if z_val < hand_ctrl.default_z:
+                    z_val = min(hand_ctrl.default_z, z_val + 1.0)
+                elif z_val > hand_ctrl.default_z:
+                    z_val = max(hand_ctrl.default_z, z_val - 1.0)
+
+            z_val = max(hand_ctrl.z_min, min(hand_ctrl.z_max, z_val))
 
             if ble_transport.connected():
                 payload = {
                     "mode": "rectJoystick",
                     "x": float(x_val),
                     "y": float(y_val),
-                    "z": 135.25,
+                    "z": float(z_val),
                     "gripper": 1,
                     "delay": 20,
                 }
                 if hand_point:
-                    print(f"[SEND] x={x_val:.2f}, y={y_val:.2f}, z=135.25")
+                    print(f"[SEND] x={x_val:.2f}, y={y_val:.2f}, z={z_val:.2f}")
                 else:
-                    print(f"[SEND] x={x_val:.2f}, y={y_val:.2f}, z=135.25 (no hand)")
+                    print(f"[SEND] x={x_val:.2f}, y={y_val:.2f}, z={z_val:.2f} (no hand)")
                 ble_transport.send_json(payload)
 
             frame_counter += 1
@@ -90,7 +101,7 @@ def main() -> None:
                 prev_time = now
                 frame_counter = 0
 
-            display_text = f"fps: {fps:.2f} | x:{x_val:.2f} y:{y_val:.2f}"
+            display_text = f"fps: {fps:.2f} | x:{x_val:.2f} y:{y_val:.2f} z:{z_val:.2f}"
             cv2.putText(frame, display_text, (10, 30), hand_ctrl.font, 0.8, (255, 255, 0), 2, cv2.LINE_AA)
             cv2.imshow("mediapipe hand detection", frame)
             if cv2.waitKey(1) & 0xFF == ord("q"):
