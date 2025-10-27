@@ -64,10 +64,10 @@ class FaceController:
         self.default_z = float(self.ctrl_cfg["default_z"])
         self.z_min = float(self.ctrl_cfg["z_min"])
         self.z_max = float(self.ctrl_cfg["z_max"])
-        self.tolerance_px = float(self.ctrl_cfg.get("tolerance_px", 30.0))
-        self.min_step = float(self.ctrl_cfg.get("min_step", 0.5))
-        self.max_step = float(self.ctrl_cfg.get("max_step", 5.0))
-        self.z_gain = float(self.ctrl_cfg.get("z_gain", 8.0))
+        self.tolerance_px = float(self.ctrl_cfg["tolerance_px"])
+        self.min_step = float(self.ctrl_cfg["min_step"])
+        self.max_step = float(self.ctrl_cfg["max_step"])
+        self.z_gain = float(self.ctrl_cfg["z_gain"])
 
         self._last_z: float = self.default_z
         self.points = [[-4.35, 12.65], [-8.61, 10.13]]

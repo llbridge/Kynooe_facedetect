@@ -25,10 +25,10 @@ class HandController:
         self.default_z = float(self.ctrl_cfg["default_z"])
         self.z_min = float(self.ctrl_cfg["z_min"])
         self.z_max = float(self.ctrl_cfg["z_max"])
-        self.tolerance_px = float(self.ctrl_cfg.get("tolerance_px", 30.0))
-        self.min_step = float(self.ctrl_cfg.get("min_step", 0.5))
-        self.max_step = float(self.ctrl_cfg.get("max_step", 5.0))
-        self.z_gain = float(self.ctrl_cfg.get("z_gain", 0.1))
+        self.tolerance_px = float(self.ctrl_cfg["tolerance_px"])
+        self.min_step = float(self.ctrl_cfg["min_step"])
+        self.max_step = float(self.ctrl_cfg["max_step"])
+        self.z_gain = float(self.ctrl_cfg["z_gain"])
 
     def step(
         self,
@@ -42,7 +42,7 @@ class HandController:
         Returns:
             x_val, y_val: Follow control targets based on hand proximity.
             z_step: Incremental z control (float) based on horizontal offset.
-            hand_point: Optional wrist center (x, y) in pixels.
+            hand_point: Optional bounding-box center (x, y) in pixels.
         """
         x_val, y_val = self.points[self._current_idx]
         z_step = 0.0
@@ -52,29 +52,38 @@ class HandController:
             hand_landmarks = results.multi_hand_landmarks[0]
             frame_height, frame_width = frame.shape[:2]
 
-            wrist = hand_landmarks.landmark[0]
-            hx = int(max(0, min(frame_width - 1, wrist.x * frame_width)))
-            hy = int(max(0, min(frame_height - 1, wrist.y * frame_height)))
-            hand_point = (hx, hy)
-
-            center_x = frame_width / 2.0
-            z_diff = hx - center_x
-            if abs(z_diff) <= self.tolerance_px:
-                print("Hand is centered.")
-                z_step = 0.0
-            else:
-                overshoot = abs(z_diff) - self.tolerance_px
-                raw_step = overshoot * self.z_gain
-                step_mag = float(min(self.max_step, max(self.min_step, raw_step)))
-                z_step = -step_mag if z_diff > 0 else step_mag
-                direction = "right" if z_diff > 0 else "left"
-                print(f"Hand is to the {direction} of center with overshoot {overshoot:.2f}px -> z step {z_step:.2f}")
-
             xs = [lm.x * frame_width for lm in hand_landmarks.landmark]
-            if xs:
+            ys = [lm.y * frame_height for lm in hand_landmarks.landmark]
+            if xs and ys:
                 min_x = min(xs)
                 max_x = max(xs)
+                min_y = min(ys)
+                max_y = max(ys)
                 bbox_width = max_x - min_x
+                bbox_center_x = (min_x + max_x) / 2.0
+                bbox_center_y = (min_y + max_y) / 2.0
+                hand_point = (int(bbox_center_x), int(bbox_center_y))
+
+                center_x = frame_width / 2.0
+                z_diff = bbox_center_x - center_x
+                abs_diff = abs(z_diff)
+                if abs_diff <= self.tolerance_px:
+                    print(
+                        f"Hand centered: offset {abs_diff:.2f}px "
+                        f"(tolerance {self.tolerance_px:.2f}px)"
+                    )
+                    z_step = 0.0
+                else:
+                    overshoot = abs_diff - self.tolerance_px
+                    raw_step = overshoot * self.z_gain
+                    step_mag = float(min(self.max_step, max(self.min_step, raw_step)))
+                    z_step = -step_mag if z_diff > 0 else step_mag
+                    direction = "right" if z_diff > 0 else "left"
+                    print(
+                        f"BBox center offset {abs_diff:.2f}px (tolerance {self.tolerance_px:.2f}px) -> "
+                        f"overshoot {overshoot:.2f}px | direction {direction} | z step {z_step:.2f}"
+                    )
+
                 box_tol_txt = " >= ".join(f"{t:.1f}" for t in self.box_tol)
                 print(
                     f"x[{min_x:.2f},{max_x:.2f}]px width:{bbox_width:.2f}px | "
@@ -92,8 +101,13 @@ class HandController:
 
             if annotate:
                 self.mp_drawing.draw_landmarks(frame, hand_landmarks, self.mp_hands.HAND_CONNECTIONS)
-                cv2.circle(frame, hand_point, 8, (0, 255, 0), -1)
-                cv2.putText(frame, "hand detection", (hx + 10, max(hy - 10, 20)), self.font, 0.6, (0, 255, 0), 2)
+                if hand_point:
+                    top_left = (int(min_x), int(min_y))
+                    bottom_right = (int(max_x), int(max_y))
+                    cv2.rectangle(frame, top_left, bottom_right, (0, 255, 255), 2)
+                    cv2.circle(frame, hand_point, 6, (0, 255, 0), -1)
+                    label_pos = (hand_point[0] + 10, max(hand_point[1] - 10, 20))
+                    cv2.putText(frame, "hand bbox", label_pos, self.font, 0.6, (0, 255, 0), 2)
         else:
             x_val, y_val = self.points[self._current_idx]
             print(f"No hand detected, holding index {self._current_idx} -> ({x_val}, {y_val}).")

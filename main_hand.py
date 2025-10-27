@@ -59,6 +59,7 @@ def main() -> None:
             return
 
         z_val = hand_ctrl.default_z
+        prev_z_val = z_val
 
         while True:
             try:
@@ -71,13 +72,13 @@ def main() -> None:
             x_val, y_val, z_step, hand_point = hand_ctrl.step(frame)
             if z_step != 0.0:
                 z_val += z_step
-            else:
-                if z_val < hand_ctrl.default_z:
-                    z_val = min(hand_ctrl.default_z, z_val + 1.0)
-                elif z_val > hand_ctrl.default_z:
-                    z_val = max(hand_ctrl.default_z, z_val - 1.0)
 
             z_val = max(hand_ctrl.z_min, min(hand_ctrl.z_max, z_val))
+
+            if abs(z_val - prev_z_val) > 1e-6:
+                deviation = z_val - hand_ctrl.default_z
+                print(f"Z deviation delta {z_val - prev_z_val:+.2f} | current deviation {deviation:+.2f}")
+                prev_z_val = z_val
 
             if ble_transport.connected():
                 payload = {

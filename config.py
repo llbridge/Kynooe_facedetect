@@ -60,10 +60,10 @@ HAND_CTRL = {
     "default_z": 110.0,
     "z_min": 0.0,
     "z_max": 180.0,
-    "tolerance_px": 40.0,
-    "min_step": 0.4,
+    "tolerance_px": 30.0,
+    "min_step": 1.0,
     "max_step": 5.0,
-    "z_gain": 0.1,
+    "z_gain": 0.2,
 }
 
 # ======================================
