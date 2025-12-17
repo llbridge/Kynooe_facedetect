@@ -62,7 +62,7 @@ HAND_CTRL = {
     "z_max": 180.0,
     "tolerance_px": 30.0,
     "min_step": 1.0,
-    "max_step": 5.0,
+    "max_step": 3.0,
     "z_gain": 0.2,
 }
 
@@ -86,13 +86,13 @@ JOYSTICK_UUID = "abcd8888-1a2b-3c4d-5e6f-abcdef888888"
 
 DEFAULT_SLAVE_ASSIGNMENTS = [
     "50787DF4D8B0=M1-R",
-    "50787DF4D808=M2-P",
-    "50787DF4CFBC=M3-P",
-    "50787DF4D85C=M4-P",
-    "50787DF4D7EC=M5-G",
+    "50787DF4CF98=M2-P",
+    # # "50787DF4CFBC=M3-P",
+    "50787DF4D85C=M3-P",
+    "50787DF4D8A0=M4-G"
 ]
 
-LINUX_DEFAULT_DEVICE_ADDRESS = "50:78:7d:f4:d8:b2"
+LINUX_DEFAULT_DEVICE_ADDRESS = "50:78:7d:f4:cf:7e"
 LINUX_DEFAULT_ADAPTER_NAME = "hci0"
 
 # === BLE write throttle ===
